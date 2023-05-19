@@ -4,7 +4,10 @@
 
 package binding
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 type queryBinding struct{}
 
@@ -14,8 +17,20 @@ func (queryBinding) Name() string {
 
 func (queryBinding) Bind(req *http.Request, obj any) error {
 	values := req.URL.Query()
-	if err := mapForm(obj, values); err != nil {
+	fmt.Printf("tag %s query values %+v\n", getTagFromMimes(req.Header.Get("Content-Type")), values)
+	if err := mapForm(obj, values, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
 		return err
 	}
 	return validate(obj)
+}
+
+func getTagFromMimes(contentType string) string {
+	var tag string
+	switch contentType {
+	case MIMEJSON:
+		tag = "json"
+	default:
+		tag = "form"
+	}
+	return tag
 }

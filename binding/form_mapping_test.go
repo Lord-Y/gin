@@ -55,6 +55,9 @@ func TestMappingBaseTypes(t *testing.T) {
 		_, err := mapping(val, emptyField, formSource{field.Name: {tt.form}}, "form")
 		assert.NoError(t, err, testName)
 
+		_, err = mapping(val, emptyField, formSource{field.Name: {tt.form}}, "json")
+		assert.NoError(t, err, testName)
+
 		actual := val.Elem().Field(0).Interface()
 		assert.Equal(t, tt.expect, actual, testName)
 	}
@@ -62,38 +65,56 @@ func TestMappingBaseTypes(t *testing.T) {
 
 func TestMappingDefault(t *testing.T) {
 	var s struct {
-		Int   int    `form:",default=9"`
-		Slice []int  `form:",default=9"`
-		Array [1]int `form:",default=9"`
+		Int   int    `form:",default=9" json:",default=9"`
+		Slice []int  `form:",default=9" json:",default=9"`
+		Array [1]int `form:",default=9" json:",default=9"`
 	}
-	err := mappingByPtr(&s, formSource{}, "form")
-	assert.NoError(t, err)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{}, tag)
+		assert.NoError(t, err)
 
-	assert.Equal(t, 9, s.Int)
-	assert.Equal(t, []int{9}, s.Slice)
-	assert.Equal(t, [1]int{9}, s.Array)
+		assert.Equal(t, 9, s.Int)
+		assert.Equal(t, []int{9}, s.Slice)
+		assert.Equal(t, [1]int{9}, s.Array)
+	}
 }
 
 func TestMappingSkipField(t *testing.T) {
 	var s struct {
 		A int
 	}
-	err := mappingByPtr(&s, formSource{}, "form")
-	assert.NoError(t, err)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{}, tag)
+		assert.NoError(t, err)
 
-	assert.Equal(t, 0, s.A)
+		assert.Equal(t, 0, s.A)
+	}
 }
 
 func TestMappingIgnoreField(t *testing.T) {
 	var s struct {
-		A int `form:"A"`
-		B int `form:"-"`
+		A int `form:"A" json:"A"`
+		B int `form:"-" json:"-"`
 	}
-	err := mappingByPtr(&s, formSource{"A": {"9"}, "B": {"9"}}, "form")
-	assert.NoError(t, err)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{"A": {"9"}, "B": {"9"}}, tag)
+		assert.NoError(t, err)
 
-	assert.Equal(t, 9, s.A)
-	assert.Equal(t, 0, s.B)
+		assert.Equal(t, 9, s.A)
+		assert.Equal(t, 0, s.B)
+	}
 }
 
 func TestMappingUnexportedField(t *testing.T) {
@@ -122,9 +143,15 @@ func TestMappingUnknownFieldType(t *testing.T) {
 		U uintptr
 	}
 
-	err := mappingByPtr(&s, formSource{"U": {"unknown"}}, "form")
-	assert.Error(t, err)
-	assert.Equal(t, errUnknownType, err)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{"U": {"unknown"}}, tag)
+		assert.Error(t, err)
+		assert.Equal(t, errUnknownType, err)
+	}
 }
 
 func TestMappingURI(t *testing.T) {
@@ -138,11 +165,18 @@ func TestMappingURI(t *testing.T) {
 
 func TestMappingForm(t *testing.T) {
 	var s struct {
-		F int `form:"field"`
+		F int `form:"field" json:"field"`
 	}
-	err := mapForm(&s, map[string][]string{"field": {"6"}})
-	assert.NoError(t, err)
-	assert.Equal(t, 6, s.F)
+
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mapForm(&s, map[string][]string{"field": {"6"}}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, 6, s.F)
+	}
 }
 
 func TestMapFormWithTag(t *testing.T) {
@@ -167,36 +201,44 @@ func TestMappingTime(t *testing.T) {
 	time.Local, err = time.LoadLocation("Europe/Berlin")
 	assert.NoError(t, err)
 
-	err = mapForm(&s, map[string][]string{
-		"Time":      {"2019-01-20T16:02:58Z"},
-		"LocalTime": {"2019-01-20"},
-		"ZeroValue": {},
-		"CSTTime":   {"2019-01-20"},
-		"UTCTime":   {"2019-01-20"},
-	})
-	assert.NoError(t, err)
-
-	assert.Equal(t, "2019-01-20 16:02:58 +0000 UTC", s.Time.String())
-	assert.Equal(t, "2019-01-20 00:00:00 +0100 CET", s.LocalTime.String())
-	assert.Equal(t, "2019-01-19 23:00:00 +0000 UTC", s.LocalTime.UTC().String())
-	assert.Equal(t, "0001-01-01 00:00:00 +0000 UTC", s.ZeroValue.String())
-	assert.Equal(t, "2019-01-20 00:00:00 +0800 CST", s.CSTTime.String())
-	assert.Equal(t, "2019-01-19 16:00:00 +0000 UTC", s.CSTTime.UTC().String())
-	assert.Equal(t, "2019-01-20 00:00:00 +0000 UTC", s.UTCTime.String())
-
-	// wrong location
-	var wrongLoc struct {
-		Time time.Time `time_location:"wrong"`
+	tags := []string{
+		"form",
+		"json",
 	}
-	err = mapForm(&wrongLoc, map[string][]string{"Time": {"2019-01-20T16:02:58Z"}})
-	assert.Error(t, err)
+	for _, tag := range tags {
+		err = mapForm(&s, map[string][]string{
+			"Time":      {"2019-01-20T16:02:58Z"},
+			"LocalTime": {"2019-01-20"},
+			"ZeroValue": {},
+			"CSTTime":   {"2019-01-20"},
+			"UTCTime":   {"2019-01-20"},
+		},
+			tag,
+		)
+		assert.NoError(t, err)
 
-	// wrong time value
-	var wrongTime struct {
-		Time time.Time
+		assert.Equal(t, "2019-01-20 16:02:58 +0000 UTC", s.Time.String())
+		assert.Equal(t, "2019-01-20 00:00:00 +0100 CET", s.LocalTime.String())
+		assert.Equal(t, "2019-01-19 23:00:00 +0000 UTC", s.LocalTime.UTC().String())
+		assert.Equal(t, "0001-01-01 00:00:00 +0000 UTC", s.ZeroValue.String())
+		assert.Equal(t, "2019-01-20 00:00:00 +0800 CST", s.CSTTime.String())
+		assert.Equal(t, "2019-01-19 16:00:00 +0000 UTC", s.CSTTime.UTC().String())
+		assert.Equal(t, "2019-01-20 00:00:00 +0000 UTC", s.UTCTime.String())
+
+		// wrong location
+		var wrongLoc struct {
+			Time time.Time `time_location:"wrong"`
+		}
+		err = mapForm(&wrongLoc, map[string][]string{"Time": {"2019-01-20T16:02:58Z"}}, tag)
+		assert.Error(t, err)
+
+		// wrong time value
+		var wrongTime struct {
+			Time time.Time
+		}
+		err = mapForm(&wrongTime, map[string][]string{"Time": {"wrong"}}, tag)
+		assert.Error(t, err)
 	}
-	err = mapForm(&wrongTime, map[string][]string{"Time": {"wrong"}})
-	assert.Error(t, err)
 }
 
 func TestMappingTimeDuration(t *testing.T) {
@@ -204,57 +246,74 @@ func TestMappingTimeDuration(t *testing.T) {
 		D time.Duration
 	}
 
-	// ok
-	err := mappingByPtr(&s, formSource{"D": {"5s"}}, "form")
-	assert.NoError(t, err)
-	assert.Equal(t, 5*time.Second, s.D)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		// ok
+		err := mappingByPtr(&s, formSource{"D": {"5s"}}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, 5*time.Second, s.D)
 
-	// error
-	err = mappingByPtr(&s, formSource{"D": {"wrong"}}, "form")
-	assert.Error(t, err)
+		// error
+		err = mappingByPtr(&s, formSource{"D": {"wrong"}}, tag)
+		assert.Error(t, err)
+	}
 }
 
 func TestMappingSlice(t *testing.T) {
 	var s struct {
-		Slice []int `form:"slice,default=9"`
+		Slice []int `form:"slice,default=9" json:"slice,default=9"`
 	}
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
 
-	// default value
-	err := mappingByPtr(&s, formSource{}, "form")
-	assert.NoError(t, err)
-	assert.Equal(t, []int{9}, s.Slice)
+		// default value
+		err := mappingByPtr(&s, formSource{}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, []int{9}, s.Slice)
 
-	// ok
-	err = mappingByPtr(&s, formSource{"slice": {"3", "4"}}, "form")
-	assert.NoError(t, err)
-	assert.Equal(t, []int{3, 4}, s.Slice)
+		// ok
+		err = mappingByPtr(&s, formSource{"slice": {"3", "4"}}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, []int{3, 4}, s.Slice)
 
-	// error
-	err = mappingByPtr(&s, formSource{"slice": {"wrong"}}, "form")
-	assert.Error(t, err)
+		// error
+		err = mappingByPtr(&s, formSource{"slice": {"wrong"}}, tag)
+		assert.Error(t, err)
+	}
 }
 
 func TestMappingArray(t *testing.T) {
 	var s struct {
-		Array [2]int `form:"array,default=9"`
+		Array [2]int `form:"array,default=9" json:"array,default=9"`
 	}
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		// wrong default
+		err := mappingByPtr(&s, formSource{}, tag)
+		assert.Error(t, err)
 
-	// wrong default
-	err := mappingByPtr(&s, formSource{}, "form")
-	assert.Error(t, err)
+		// ok
+		err = mappingByPtr(&s, formSource{"array": {"3", "4"}}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, [2]int{3, 4}, s.Array)
 
-	// ok
-	err = mappingByPtr(&s, formSource{"array": {"3", "4"}}, "form")
-	assert.NoError(t, err)
-	assert.Equal(t, [2]int{3, 4}, s.Array)
+		// error - not enough vals
+		err = mappingByPtr(&s, formSource{"array": {"3"}}, tag)
+		assert.Error(t, err)
 
-	// error - not enough vals
-	err = mappingByPtr(&s, formSource{"array": {"3"}}, "form")
-	assert.Error(t, err)
-
-	// error - wrong value
-	err = mappingByPtr(&s, formSource{"array": {"wrong"}}, "form")
-	assert.Error(t, err)
+		// error - wrong value
+		err = mappingByPtr(&s, formSource{"array": {"wrong"}}, tag)
+		assert.Error(t, err)
+	}
 }
 
 func TestMappingStructField(t *testing.T) {
@@ -264,9 +323,15 @@ func TestMappingStructField(t *testing.T) {
 		}
 	}
 
-	err := mappingByPtr(&s, formSource{"J": {`{"I": 9}`}}, "form")
-	assert.NoError(t, err)
-	assert.Equal(t, 9, s.J.I)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{"J": {`{"I": 9}`}}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, 9, s.J.I)
+	}
 }
 
 func TestMappingMapField(t *testing.T) {
@@ -274,17 +339,44 @@ func TestMappingMapField(t *testing.T) {
 		M map[string]int
 	}
 
-	err := mappingByPtr(&s, formSource{"M": {`{"one": 1}`}}, "form")
-	assert.NoError(t, err)
-	assert.Equal(t, map[string]int{"one": 1}, s.M)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{"M": {`{"one": 1}`}}, tag)
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]int{"one": 1}, s.M)
+	}
 }
 
 func TestMappingIgnoredCircularRef(t *testing.T) {
 	type S struct {
-		S *S `form:"-"`
+		S *S `form:"-" json:"-"`
 	}
 	var s S
 
-	err := mappingByPtr(&s, formSource{}, "form")
-	assert.NoError(t, err)
+	tags := []string{
+		"form",
+		"json",
+	}
+	for _, tag := range tags {
+		err := mappingByPtr(&s, formSource{}, tag)
+		assert.NoError(t, err)
+	}
+}
+
+func TestGetTagFromMimes(t *testing.T) {
+	tags := []string{
+		MIMEJSON,
+		MIMEPOSTForm,
+	}
+	for _, tag := range tags {
+		switch tag {
+		case MIMEJSON:
+			assert.Equal(t, "json", getTagFromMimes(tag))
+		default:
+			assert.Equal(t, "form", getTagFromMimes(tag))
+		}
+	}
 }

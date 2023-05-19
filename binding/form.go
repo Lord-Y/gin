@@ -26,7 +26,7 @@ func (formBinding) Bind(req *http.Request, obj any) error {
 	if err := req.ParseMultipartForm(defaultMemory); err != nil && !errors.Is(err, http.ErrNotMultipart) {
 		return err
 	}
-	if err := mapForm(obj, req.Form); err != nil {
+	if err := mapForm(obj, req.Form, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
 		return err
 	}
 	return validate(obj)
@@ -40,7 +40,7 @@ func (formPostBinding) Bind(req *http.Request, obj any) error {
 	if err := req.ParseForm(); err != nil {
 		return err
 	}
-	if err := mapForm(obj, req.PostForm); err != nil {
+	if err := mapForm(obj, req.PostForm, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
 		return err
 	}
 	return validate(obj)
