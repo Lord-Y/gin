@@ -7,10 +7,8 @@ package binding
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin/internal/json"
 )
@@ -33,14 +31,9 @@ func (jsonBinding) Name() string {
 }
 
 func (jsonBinding) Bind(req *http.Request, obj any) error {
-	if req == nil {
+	if req == nil || req.Body == nil {
 		return errors.New("invalid request")
 	}
-	fmt.Printf("before req.body %+v", req.Body)
-	if req.Body == nil && req.Method == "GET" {
-		req.Body = io.NopCloser(strings.NewReader(`{}`))
-	}
-	fmt.Printf("after req.body %+v", req.Body)
 	if err := mapForm(obj, req.Form, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
 		return err
 	}
