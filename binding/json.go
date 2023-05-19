@@ -36,10 +36,11 @@ func (jsonBinding) Bind(req *http.Request, obj any) error {
 	if req == nil {
 		return errors.New("invalid request")
 	}
-	if req.Body == nil {
+	fmt.Printf("before req.body %+v", req.Body)
+	if req.Body == nil && req.Method == "GET" {
 		req.Body = io.NopCloser(strings.NewReader(`{}`))
 	}
-	fmt.Printf("req.body %+v", req.Body)
+	fmt.Printf("after req.body %+v", req.Body)
 	if err := mapForm(obj, req.Form, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
 		return err
 	}
