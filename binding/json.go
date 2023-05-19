@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin/internal/json"
 )
@@ -31,8 +32,14 @@ func (jsonBinding) Name() string {
 }
 
 func (jsonBinding) Bind(req *http.Request, obj any) error {
-	if req == nil || req.Body == nil {
+	if req == nil {
 		return errors.New("invalid request")
+	}
+	if req.Body == nil {
+		req.Body = io.NopCloser(strings.NewReader(`{}`))
+	}
+	if err := mapForm(obj, req.Form, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
+		return err
 	}
 	return decodeJSON(req.Body, obj)
 }
