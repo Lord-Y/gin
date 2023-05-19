@@ -7,6 +7,7 @@ package binding
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -38,6 +39,7 @@ func (jsonBinding) Bind(req *http.Request, obj any) error {
 	if req.Body == nil {
 		req.Body = io.NopCloser(strings.NewReader(`{}`))
 	}
+	fmt.Printf("req.body %+v", req.Body)
 	if err := mapForm(obj, req.Form, getTagFromMimes(req.Header.Get("Content-Type"))); err != nil {
 		return err
 	}
