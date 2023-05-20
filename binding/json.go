@@ -45,6 +45,13 @@ func (jsonBinding) BindBody(body []byte, obj any) error {
 }
 
 func decodeJSON(r io.Reader, obj any) error {
+	bytes, err := io.ReadAll(r)
+	if err != nil {
+		return errors.New("fail to read body")
+	}
+	if len(string(bytes)) == 0 {
+		return nil
+	}
 	decoder := json.NewDecoder(r)
 	if EnableDecoderUseNumber {
 		decoder.UseNumber()
