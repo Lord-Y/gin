@@ -7,7 +7,6 @@ package binding
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -50,8 +49,7 @@ func decodeJSON(r io.Reader, obj any) error {
 	if err != nil {
 		return errors.New("fail to read body")
 	}
-	fmt.Println("body", string(bytes))
-	if len(string(bytes)) == 0 {
+	if len(string(bytes)) == 0 || string(bytes) == `{}` {
 		return nil
 	}
 	decoder := json.NewDecoder(r)
